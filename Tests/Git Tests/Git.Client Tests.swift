@@ -1,4 +1,3 @@
-import Foundation
 import Testing
 
 @testable import Git_Foundation
@@ -8,142 +7,127 @@ extension Git.Client {
     struct Test {
         @Test
         func `repository state and status use typed operations`() throws {
-            let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+            let root = try GitFixture.makeRoot()
 
-            defer { try? FileManager.default.removeItem(at: root) }
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { GitFixture.remove(root) }
 
             let client = Git.Client()
-            try client.initialize(at: root.path, bare: false)
+            try client.initialize(at: root, bare: false)
 
-            #expect(try client.repository(at: root.path))
-            #expect(try client.status(at: root.path).isEmpty)
+            #expect(try client.repository(at: root))
+            #expect(try client.status(at: root).isEmpty)
 
-            let top = try client.top(at: root.path)
+            let top = try client.top(at: root)
 
-            let sentinel = "Sentinel-\(UUID().uuidString).txt"
-            try "sentinel\n".write(
-                to: root.appending(path: sentinel),
-                atomically: true,
-                encoding: .utf8
-            )
-            #expect(FileManager.default.fileExists(atPath: "\(top)/\(sentinel)"))
+            let sentinel = GitFixture.unique("Sentinel-", ".txt")
+            try GitFixture.write("sentinel\n", to: GitFixture.path(root, sentinel))
+            #expect(GitFixture.exists("\(top)/\(sentinel)"))
         }
 
         @Test
         func `isolated fetch compares refs without changing source metadata`() throws {
-            let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-            let source = root.appending(path: "source.git")
-            let probe = root.appending(path: "probe.git")
+            let root = try GitFixture.makeRoot()
+            let source = GitFixture.path(root, "source.git")
+            let probe = GitFixture.path(root, "probe.git")
 
-            defer { try? FileManager.default.removeItem(at: root) }
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { GitFixture.remove(root) }
 
             let client = Git.Client()
-            try client.initialize(at: source.path, bare: true)
-            try client.initialize(at: probe.path, bare: true)
+            try client.initialize(at: source, bare: true)
+            try client.initialize(at: probe, bare: true)
 
             let ref = try Git.Ref.Name("refs/heads/main")
             let destination = try Git.Ref.Name("refs/probe/local")
             #expect(throws: Git.Client.Error.self) {
-                try client.fetch(source.path, ref: ref, into: destination, at: probe.path)
+                try client.fetch(source, ref: ref, into: destination, at: probe)
             }
         }
 
         @Test
         func `isolated clone proves ancestry and exact object fetch`() throws {
-            let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-            let source = root.appending(path: "source")
-            let remote = root.appending(path: "remote.git")
-            let probe = root.appending(path: "probe.git")
+            let root = try GitFixture.makeRoot()
+            let source = GitFixture.path(root, "source")
+            let remote = GitFixture.path(root, "remote.git")
+            let probe = GitFixture.path(root, "probe.git")
 
-            defer { try? FileManager.default.removeItem(at: root) }
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { GitFixture.remove(root) }
 
             let client = Git.Client()
-            try client.initialize(at: source.path, bare: false)
+            try client.initialize(at: source, bare: false)
             try command(client, ["config", "user.email", "workspace@swift.institute"], at: source)
             try command(client, ["config", "user.name", "Workspace Tests"], at: source)
             try command(client, ["branch", "-M", "main"], at: source)
 
-            let fixture = source.appending(path: "Fixture.txt")
-            try "first\n".write(to: fixture, atomically: true, encoding: .utf8)
+            let fixture = GitFixture.path(source, "Fixture.txt")
+            try GitFixture.write("first\n", to: fixture)
             try command(client, ["add", "Fixture.txt"], at: source)
             try command(client, ["commit", "-m", "first"], at: source)
-            let first = try client.head(at: source.path)
+            let first = try client.head(at: source)
 
-            try "second\n".write(to: fixture, atomically: true, encoding: .utf8)
+            try GitFixture.write("second\n", to: fixture)
             try command(client, ["add", "Fixture.txt"], at: source)
             try command(client, ["commit", "-m", "second"], at: source)
-            let second = try client.head(at: source.path)
+            let second = try client.head(at: source)
 
-            try client.clone(source.path, branch: "main", bare: true, to: remote.path)
-            #expect(try client.ancestor(first, of: second, at: remote.path))
+            try client.clone(source, branch: "main", bare: true, to: remote)
+            #expect(try client.ancestor(first, of: second, at: remote))
 
-            try client.initialize(at: probe.path, bare: true)
+            try client.initialize(at: probe, bare: true)
             let destination = try Git.Ref.Name("refs/probe/main")
-            try client.fetch(remote.path, object: second, into: destination, at: probe.path)
-            #expect(try client.head(destination.rawValue, at: probe.path) == second)
+            try client.fetch(remote, object: second, into: destination, at: probe)
+            #expect(try client.head(destination.rawValue, at: probe) == second)
         }
 
         @Test
         func `exact object primitives answer from the store, not from refs`() throws {
-            let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-            let source = root.appending(path: "source")
-            let clone = root.appending(path: "clone")
+            let root = try GitFixture.makeRoot()
+            let source = GitFixture.path(root, "source")
+            let clone = GitFixture.path(root, "clone")
 
-            defer { try? FileManager.default.removeItem(at: root) }
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { GitFixture.remove(root) }
 
             let client = Git.Client()
-            try client.initialize(at: source.path, bare: false)
+            try client.initialize(at: source, bare: false)
             try command(client, ["config", "user.email", "workspace@swift.institute"], at: source)
             try command(client, ["config", "user.name", "Workspace Tests"], at: source)
             try command(client, ["branch", "-M", "main"], at: source)
 
-            let fixture = source.appending(path: "Fixture.txt")
-            try "first\n".write(to: fixture, atomically: true, encoding: .utf8)
+            let fixture = GitFixture.path(source, "Fixture.txt")
+            try GitFixture.write("first\n", to: fixture)
             try command(client, ["add", "Fixture.txt"], at: source)
             try command(client, ["commit", "-m", "first"], at: source)
-            let first = try client.head(at: source.path)
+            let first = try client.head(at: source)
 
-            try "second\n".write(to: fixture, atomically: true, encoding: .utf8)
+            try GitFixture.write("second\n", to: fixture)
             try command(client, ["add", "Fixture.txt"], at: source)
             try command(client, ["commit", "-m", "second"], at: source)
-            let second = try client.head(at: source.path)
+            let second = try client.head(at: source)
 
-            #expect(try client.contains(commit: first, at: source.path))
-            #expect(try client.contains(commit: second, at: source.path))
+            #expect(try client.contains(commit: first, at: source))
+            #expect(try client.contains(commit: second, at: source))
             let absent = try #require(
                 Git.Object.ID(rawValue: Swift.String(repeating: "a", count: 40))
             )
-            #expect(try !client.contains(commit: absent, at: source.path))
+            #expect(try !client.contains(commit: absent, at: source))
 
-            let firstTree = try client.tree(of: first, at: source.path)
-            let secondTree = try client.tree(of: second, at: source.path)
+            let firstTree = try client.tree(of: first, at: source)
+            let secondTree = try client.tree(of: second, at: source)
             #expect(firstTree != secondTree)
 
-            try client.clone(source.path, branch: "main", checkout: false, to: clone.path)
+            try client.clone(source, branch: "main", checkout: false, to: clone)
+            #expect(!GitFixture.exists(GitFixture.path(clone, "Fixture.txt")))
+            try client.checkout(detached: first, at: clone)
+            #expect(try client.head(at: clone) == first)
+            #expect(try client.tree(of: first, at: clone) == firstTree)
+            #expect(try client.status(at: clone).isEmpty)
             #expect(
-                !FileManager.default.fileExists(
-                    atPath: clone.appending(path: "Fixture.txt").path
-                )
-            )
-            try client.checkout(detached: first, at: clone.path)
-            #expect(try client.head(at: clone.path) == first)
-            #expect(try client.tree(of: first, at: clone.path) == firstTree)
-            #expect(try client.status(at: clone.path).isEmpty)
-            #expect(
-                try Swift.String(
-                    contentsOf: clone.appending(path: "Fixture.txt"),
-                    encoding: .utf8
-                ) == "first\n"
+                try GitFixture.read(GitFixture.path(clone, "Fixture.txt")) == "first\n"
             )
 
-            try "third\n".write(to: fixture, atomically: true, encoding: .utf8)
+            try GitFixture.write("third\n", to: fixture)
             try command(client, ["add", "Fixture.txt"], at: source)
             try command(client, ["commit", "-m", "third"], at: source)
-            #expect(try client.head(at: clone.path) == first)
+            #expect(try client.head(at: clone) == first)
         }
     }
 }
@@ -151,7 +135,7 @@ extension Git.Client {
 private func command(
     _ client: Git.Client,
     _ arguments: [Swift.String],
-    at directory: URL
+    at directory: Swift.String
 ) throws(Git.Client.Error) {
-    _ = try client.bytes(arguments, at: directory.path)
+    _ = try client.bytes(arguments, at: directory)
 }
