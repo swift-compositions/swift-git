@@ -38,9 +38,22 @@ extension Git.Client {
 
             let ref = try Git.Ref.Name("refs/heads/main")
             let destination = try Git.Ref.Name("refs/probe/local")
-            #expect(throws: Git.Client.Error.self) {
+            let started = ContinuousClock.now
+            var failure: Git.Client.Error?
+            do throws(Git.Client.Error) {
                 try client.fetch(source, ref: ref, into: destination, at: probe)
+            } catch {
+                failure = error
             }
+            let elapsed = ContinuousClock.now - started
+            #expect(elapsed < .seconds(10), "fetch took \(elapsed)")
+            guard case .command(_, let termination, _, let stderr) = try #require(failure) else {
+                Issue.record("expected a git command failure, got \(String(describing: failure))")
+                return
+            }
+            #expect(termination == .exited(code: 128), "git ended with \(termination)")
+            let diagnostics = Swift.String(decoding: stderr, as: UTF8.self)
+            #expect(diagnostics.contains("couldn't find remote ref refs/heads/main"), "unexpected git stderr: \(diagnostics)")
         }
 
         @Test
