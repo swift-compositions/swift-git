@@ -142,6 +142,65 @@ extension Git.Client {
             try command(client, ["commit", "-m", "third"], at: source)
             #expect(try client.head(at: clone) == first)
         }
+
+        @Test
+        func `add and commit record exactly the staged paths`() throws {
+            let root = try GitFixture.makeRoot()
+            let source = GitFixture.path(root, "source")
+
+            defer { GitFixture.remove(root) }
+
+            let client = Git.Client()
+            try client.initialize(at: source, bare: false)
+            try command(client, ["config", "user.email", "workspace@swift.institute"], at: source)
+            try command(client, ["config", "user.name", "Workspace Tests"], at: source)
+
+            try GitFixture.write("staged\n", to: GitFixture.path(source, "Staged.txt"))
+            try GitFixture.write("left\n", to: GitFixture.path(source, "Left.txt"))
+            try client.add(["Staged.txt"], at: source)
+            let first = try client.commit(message: "first", at: source)
+            #expect(try client.head(at: source) == first)
+            #expect(try client.count("HEAD", at: source) == 1)
+
+            let remaining = try client.status(at: source)
+            #expect(remaining.count == 1, "only the unstaged file remains: \(remaining)")
+
+            try GitFixture.write("staged again\n", to: GitFixture.path(source, "Staged.txt"))
+            try client.add(["Staged.txt"], at: source)
+            let second = try client.commit(message: "second", at: source)
+            #expect(second != first)
+            #expect(try client.ancestor(first, of: second, at: source))
+        }
+
+        @Test
+        func `a depth clone over a transport remote truncates history`() throws {
+            let root = try GitFixture.makeRoot()
+            let source = GitFixture.path(root, "source")
+            let full = GitFixture.path(root, "full")
+            let shallow = GitFixture.path(root, "shallow")
+
+            defer { GitFixture.remove(root) }
+
+            let client = Git.Client()
+            try client.initialize(at: source, bare: false)
+            try command(client, ["config", "user.email", "workspace@swift.institute"], at: source)
+            try command(client, ["config", "user.name", "Workspace Tests"], at: source)
+            let fixture = GitFixture.path(source, "Fixture.txt")
+            for revision in ["first", "second", "third"] {
+                try GitFixture.write("\(revision)\n", to: fixture)
+                try client.add(["Fixture.txt"], at: source)
+                _ = try client.commit(message: revision, at: source)
+            }
+            let head = try client.head(at: source)
+
+            try client.clone("file://\(source)", to: full)
+            #expect(try client.count("HEAD", at: full) == 3)
+
+            try client.clone("file://\(source)", depth: 1, to: shallow)
+            #expect(try client.head(at: shallow) == head)
+            #expect(try client.count("HEAD", at: shallow) == 1)
+            #expect(try GitFixture.read(GitFixture.path(shallow, "Fixture.txt")) == "third\n")
+        }
     }
 }
 

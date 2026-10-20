@@ -43,9 +43,16 @@ extension Git.Client {
         _ = try bytes(arguments, at: directory)
     }
 
+    /// Clones `remote` into `directory`.
+    ///
+    /// A `depth` truncates history to that many commits of the cloned
+    /// branch (`--depth`, which implies `--single-branch`). Git honours it
+    /// only for a transport remote: a plain local path ignores it, so a
+    /// local shallow clone spells its remote `file://<path>`.
     public func clone(
         _ remote: Swift.String,
         branch: Swift.String? = nil,
+        depth: Swift.Int? = nil,
         bare: Swift.Bool = false,
         checkout: Swift.Bool = true,
         to directory: Swift.String
@@ -53,6 +60,9 @@ extension Git.Client {
         var arguments = ["clone", "--origin", "origin", "--no-tags"]
         if let branch {
             arguments += ["--single-branch", "--branch", branch]
+        }
+        if let depth {
+            arguments += ["--depth", "\(depth)"]
         }
         if bare {
             arguments.append("--bare")
@@ -81,5 +91,21 @@ extension Git.Client {
         at directory: Swift.String
     ) throws(Error) {
         _ = try bytes(["branch", "--set-upstream-to=\(upstream)", branch], at: directory)
+    }
+
+    /// Stages exactly `paths` (relative to `directory`) for the next commit.
+    public func add(_ paths: [Swift.String], at directory: Swift.String) throws(Error) {
+        _ = try bytes(["add", "--"] + paths, at: directory)
+    }
+
+    /// Records the staged changes as one commit with `message` under the
+    /// configured identity, and returns the new `HEAD`.
+    ///
+    /// Only what is staged is committed; nothing is staged implicitly.
+    public func commit(message: Swift.String, at directory: Swift.String) throws(Error)
+        -> Git.Object.ID
+    {
+        _ = try bytes(["commit", "--quiet", "--message", message], at: directory)
+        return try head(at: directory)
     }
 }
