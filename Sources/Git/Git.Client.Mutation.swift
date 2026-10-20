@@ -102,7 +102,10 @@ extension Git.Client {
     /// configured identity, and returns the new `HEAD`.
     ///
     /// Only what is staged is committed; nothing is staged implicitly.
-    public func commit(message: Swift.String, at directory: Swift.String) throws(Error)
+    public func commit(
+        message: Swift.String,
+        at directory: Swift.String
+    ) throws(Error)
         -> Git.Object.ID
     {
         _ = try bytes(["commit", "--quiet", "--message", message], at: directory)
