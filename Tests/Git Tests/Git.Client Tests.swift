@@ -53,7 +53,10 @@ extension Git.Client {
             }
             #expect(termination == .exited(code: 128), "git ended with \(termination)")
             let diagnostics = Swift.String(decoding: stderr, as: UTF8.self)
-            #expect(diagnostics.contains("couldn't find remote ref refs/heads/main"), "unexpected git stderr: \(diagnostics)")
+            #expect(
+                diagnostics.contains("couldn't find remote ref refs/heads/main"),
+                "unexpected git stderr: \(diagnostics)"
+            )
         }
 
         @Test
