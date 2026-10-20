@@ -82,8 +82,7 @@ extension Git.Client {
         return tree
     }
 
-    public func count(_ range: Swift.String, at directory: Swift.String) throws(Error) -> Swift.Int
-    {
+    public func count(_ range: Swift.String, at directory: Swift.String) throws(Error) -> Swift.Int {
         let value = try text(["rev-list", "--count", range], at: directory)
         guard let count = Swift.Int(value) else {
             throw .count(value)
