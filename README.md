@@ -1,107 +1,16 @@
 # swift-git
 
-![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
+Use this package when a Swift tool needs to drive the installed `git` on a local repository: clone, fetch, commit, check out, and read back state such as the current commit, ancestry, status and file list as typed values. Start from `Git.Client`. If you only need to parse Git's own output formats, such as porcelain status or a ref advertisement, without running `git`, use swift-git-standard, which this package re-exports. For the GitHub API, use swift-github.
 
-Foundation-free Git repository inspection and safe mutation through the installed Git executable.
+## Laws
 
----
-
-## Quick Start
-
-```swift
-import Git
-
-let git = Git.Client()
-let branch = try git.branch(at: "/path/to/repository")
-let clean = try git.status(at: "/path/to/repository").isEmpty
-let main = try Git.Ref.Name("refs/heads/main")
-let remote = try git.probe("https://github.com/example/package.git", ref: main)
-
-print(branch, clean, remote.object)
-```
-
----
-
-## Installation
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/swift-compositions/swift-git.git", branch: "main")
-]
-```
-
-Add the product to your target:
-
-```swift
-.target(
-    name: "YourTarget",
-    dependencies: [
-        .product(name: "Git", package: "swift-git")
-    ]
-)
-```
-
-### Requirements
-
-- Swift 6.3+
-- macOS 26+
-- An installed Git executable
-
----
-
-## Architecture
-
-`Git.Client` composes [swift-process](https://github.com/swift-compositions/swift-process) with the typed representations in [swift-git-standard](https://github.com/swift-standards/swift-git-standard). It exposes repository probes, ref advertisement, status parsing, clone, fetch, fast-forward merge, branch switching, and upstream tracking without importing Foundation.
-
----
-
-## Error Handling
-
-`Git.Client` operations throw a typed `Git.Client.Error`:
-
-```
-Git.Client.Error
-├── .execution                          // git executable could not be launched
-├── .command(arguments:termination:     // git exited non-zero; carries argv,
-│            stdout:stderr:)            //   termination, and captured output
-├── .advertisement(Git.Ref.Advertisement.Error)  // malformed ref advertisement
-├── .status(Git.Status.Error)          // `git status` output could not be parsed
-├── .object(String)                    // unexpected object output
-├── .count(String)                     // unexpected rev-count output
-└── .missing(Git.Ref.Name)             // requested ref not present
-```
-
-```swift
-do {
-    let clean = try git.status(at: repository).isEmpty
-    _ = clean
-} catch .execution {
-    // git is not installed or could not be launched
-} catch .command(let arguments, let termination, _, let stderr) {
-    _ = (arguments, termination, stderr)
-} catch .advertisement(let error) {
-    _ = error
-} catch .status(let error) {
-    _ = error
-} catch .object(let detail) {
-    _ = detail
-} catch .count(let detail) {
-    _ = detail
-} catch .missing(let ref) {
-    _ = ref
-}
-```
-
----
-
-## Community
-
-<!-- BEGIN: discussion -->
-*Discussion thread will be created at the first public release.*
-<!-- END: discussion -->
-
----
-
-## License
-
-Apache 2.0. See [LICENSE](LICENSE.md).
+- `Git.Client` runs `git` as a subprocess for every call, with no timeout. By default it uses the first executable `git` on `PATH` when the client is created, and falls back to `/usr/bin/git`, or the standard Git for Windows path.
+- A non-zero exit fails with the arguments, the termination and both output streams, with these exceptions. `Git.Client.repository(at:)` returns false for any failing `git` command. `Git.Client.contains(commit:at:)` returns false for exit codes 1 and 128. `Git.Client.ancestor(_:of:at:)` returns false for exit code 1.
+- Text results are trimmed of surrounding spaces, tabs and line breaks. `Git.Client.branch(at:)` returns an empty string on a detached HEAD, and `Git.Client.upstream(_:at:)` returns an empty string for a branch with no upstream.
+- Fetches and clones never fetch tags. A clone names its remote `origin`, and a clone of one branch fetches only that branch.
+- A clone with `depth` truncates history only when the remote is a transport URL. Git ignores `depth` for a plain local path, so a shallow local clone needs a `file://` remote.
+- `Git.Merge.Mode.fast` allows only a fast-forward. `Git.Merge.Mode.any` lets Git create a merge commit.
+- `Git.Client.commit(message:at:)` records only what is already staged, under the identity Git is configured with, and returns the new HEAD.
+- `Git.Client.probe(_:ref:)` asks the remote for the ref with `--exit-code`. A remote with no matching ref fails as a command with exit code 2. The missing-ref error appears only when the remote matched other refs ending in the same name but not the exact one.
+- `Git.Client.status(at:)` reports an untracked directory as one entry rather than listing its files.
+- `Git.Client.paths(at:)` lists tracked files and untracked files that aren't ignored, sorted. A path that isn't valid UTF-8, or one listed twice, fails.
