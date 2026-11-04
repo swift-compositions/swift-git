@@ -24,7 +24,7 @@ extension Git.Client {
                     arguments: arguments,
                     stdout: .pipe,
                     stderr: .pipe,
-                    workingDirectory: directory
+                    directory: directory
                 )
             )
         } catch {
