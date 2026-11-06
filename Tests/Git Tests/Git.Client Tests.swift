@@ -3,7 +3,9 @@ import Testing
 
 @testable import Git_Foundation
 
-extension Git.Client {
+enum `Git.Client Tests` {}
+
+extension `Git.Client Tests` {
     @Suite
     struct Test {
         @Test
