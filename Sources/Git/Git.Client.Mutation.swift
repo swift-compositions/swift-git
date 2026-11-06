@@ -1,12 +1,13 @@
 public import Git_Standard
+public import Path
 
 extension Git.Client {
-    public func initialize(at directory: Swift.String, bare: Swift.Bool) throws(Error) {
+    public func initialize(at directory: Path::Path, bare: Swift.Bool) throws(Error) {
         var arguments = ["init"]
         if bare {
             arguments.append("--bare")
         }
-        arguments.append(directory)
+        arguments.append(directory.string)
         _ = try bytes(arguments)
     }
 
@@ -14,7 +15,7 @@ extension Git.Client {
         _ remote: Swift.String,
         ref: Git.Ref.Name,
         into destination: Git.Ref.Name? = nil,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) {
         let specification = destination.map { "\(ref.rawValue):\($0.rawValue)" } ?? ref.rawValue
         _ = try bytes(["fetch", "--no-tags", remote, specification], at: directory)
@@ -24,7 +25,7 @@ extension Git.Client {
         _ remote: Swift.String,
         object: Git.Object.ID,
         into destination: Git.Ref.Name,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) {
         let specification = "\(object.rawValue):\(destination.rawValue)"
         _ = try bytes(["fetch", "--no-tags", remote, specification], at: directory)
@@ -33,7 +34,7 @@ extension Git.Client {
     public func merge(
         _ reference: Swift.String,
         mode: Git.Merge.Mode,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) {
         var arguments = ["merge"]
         if mode == .fast {
@@ -55,7 +56,7 @@ extension Git.Client {
         depth: Swift.Int? = nil,
         bare: Swift.Bool = false,
         checkout: Swift.Bool = true,
-        to directory: Swift.String
+        to directory: Path::Path
     ) throws(Error) {
         var arguments = ["clone", "--origin", "origin", "--no-tags"]
         if let branch {
@@ -70,31 +71,31 @@ extension Git.Client {
         if !checkout {
             arguments.append("--no-checkout")
         }
-        arguments += [remote, directory]
+        arguments += [remote, directory.string]
         _ = try bytes(arguments)
     }
 
     public func checkout(
         detached object: Git.Object.ID,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) {
         _ = try bytes(["checkout", "--detach", object.rawValue], at: directory)
     }
 
-    public func `switch`(_ branch: Swift.String, at directory: Swift.String) throws(Error) {
+    public func `switch`(_ branch: Swift.String, at directory: Path::Path) throws(Error) {
         _ = try bytes(["switch", branch], at: directory)
     }
 
     public func track(
         _ branch: Swift.String,
         upstream: Swift.String,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) {
         _ = try bytes(["branch", "--set-upstream-to=\(upstream)", branch], at: directory)
     }
 
     /// Stages exactly `paths` (relative to `directory`) for the next commit.
-    public func add(_ paths: [Swift.String], at directory: Swift.String) throws(Error) {
+    public func add(_ paths: [Swift.String], at directory: Path::Path) throws(Error) {
         _ = try bytes(["add", "--"] + paths, at: directory)
     }
 
@@ -104,7 +105,7 @@ extension Git.Client {
     /// Only what is staged is committed; nothing is staged implicitly.
     public func commit(
         message: Swift.String,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error)
         -> Git.Object.ID
     {

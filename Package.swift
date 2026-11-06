@@ -17,19 +17,24 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swift-standards/swift-git-standard.git", branch: "main"),
         .package(url: "https://github.com/swift-compositions/swift-process.git", branch: "main"),
+        .package(url: "https://github.com/swift-atoms/swift-path.git", branch: "main"),
     ],
     targets: [
         .target(
             name: "Git Foundation",
             dependencies: [
                 .product(name: "Git Standard", package: "swift-git-standard"),
+                .product(name: "Path", package: "swift-path"),
                 .product(name: "Process", package: "swift-process"),
             ],
             path: "Sources/Git"
         ),
         .testTarget(
             name: "Git Tests",
-            dependencies: ["Git Foundation"]
+            dependencies: [
+                "Git Foundation",
+                .product(name: "Path", package: "swift-path"),
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]

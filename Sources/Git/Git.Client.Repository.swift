@@ -1,7 +1,8 @@
 public import Git_Standard
+public import Path
 
 extension Git.Client {
-    public func repository(at directory: Swift.String) throws(Error) -> Swift.Bool {
+    public func repository(at directory: Path::Path) throws(Error) -> Swift.Bool {
         do throws(Error) {
             return try text(["rev-parse", "--is-inside-work-tree"], at: directory) == "true"
         } catch {
@@ -12,24 +13,24 @@ extension Git.Client {
         }
     }
 
-    public func top(at directory: Swift.String) throws(Error) -> Swift.String {
+    public func top(at directory: Path::Path) throws(Error) -> Swift.String {
         try text(["rev-parse", "--show-toplevel"], at: directory)
     }
 
     public func remote(
         _ name: Swift.String,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) -> Swift.String {
         try text(["remote", "get-url", name], at: directory)
     }
 
-    public func branch(at directory: Swift.String) throws(Error) -> Swift.String {
+    public func branch(at directory: Path::Path) throws(Error) -> Swift.String {
         try text(["branch", "--show-current"], at: directory)
     }
 
     public func upstream(
         _ branch: Swift.String,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) -> Swift.String {
         try text(
             ["for-each-ref", "--format=%(upstream:short)", "refs/heads/\(branch)"],
@@ -39,7 +40,7 @@ extension Git.Client {
 
     public func head(
         _ reference: Swift.String = "HEAD",
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) -> Git.Object.ID {
         let value = try text(["rev-parse", reference], at: directory)
         guard let object = Git.Object.ID(rawValue: value) else {
@@ -50,7 +51,7 @@ extension Git.Client {
 
     public func contains(
         commit object: Git.Object.ID,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) -> Swift.Bool {
         let arguments = ["cat-file", "-e", "\(object.rawValue)^{commit}"]
         let result = try result(arguments, at: directory)
@@ -73,7 +74,7 @@ extension Git.Client {
 
     public func tree(
         of object: Git.Object.ID,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) -> Git.Object.ID {
         let value = try text(["rev-parse", "\(object.rawValue)^{tree}"], at: directory)
         guard let tree = Git.Object.ID(rawValue: value) else {
@@ -82,7 +83,7 @@ extension Git.Client {
         return tree
     }
 
-    public func count(_ range: Swift.String, at directory: Swift.String) throws(Error) -> Swift.Int {
+    public func count(_ range: Swift.String, at directory: Path::Path) throws(Error) -> Swift.Int {
         let value = try text(["rev-list", "--count", range], at: directory)
         guard let count = Swift.Int(value) else {
             throw .count(value)
@@ -93,7 +94,7 @@ extension Git.Client {
     public func ancestor(
         _ ancestor: Git.Object.ID,
         of descendant: Git.Object.ID,
-        at directory: Swift.String
+        at directory: Path::Path
     ) throws(Error) -> Swift.Bool {
         let arguments = ["merge-base", "--is-ancestor", ancestor.rawValue, descendant.rawValue]
         let result = try result(arguments, at: directory)
@@ -114,7 +115,7 @@ extension Git.Client {
         }
     }
 
-    public func status(at directory: Swift.String) throws(Error) -> [Git.Status.Entry] {
+    public func status(at directory: Path::Path) throws(Error) -> [Git.Status.Entry] {
         let output = try bytes(
             ["status", "--porcelain=v1", "-z", "--untracked-files=normal"],
             at: directory

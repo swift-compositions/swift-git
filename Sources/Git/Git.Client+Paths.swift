@@ -1,7 +1,8 @@
 public import Git_Standard
+public import Path
 
 extension Git.Client {
-    public func paths(at directory: Swift.String) throws(Error) -> [Swift.String] {
+    public func paths(at directory: Path::Path) throws(Error) -> [Swift.String] {
         let output = try bytes(
             ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
             at: directory

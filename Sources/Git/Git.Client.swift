@@ -1,4 +1,5 @@
 public import Git_Standard
+internal import Path
 private import Process
 
 extension Git {
@@ -15,7 +16,7 @@ extension Git {
 extension Git.Client {
     private func execute(
         _ arguments: [Swift.String],
-        at directory: Swift.String? = nil
+        at directory: Path::Path? = nil
     ) throws(Error) -> Process.Output {
         do throws(Process.Error) {
             return try Process.Spawn.run(
@@ -34,7 +35,7 @@ extension Git.Client {
 
     internal func bytes(
         _ arguments: [Swift.String],
-        at directory: Swift.String? = nil
+        at directory: Path::Path? = nil
     ) throws(Error) -> [UInt8] {
         let output = try execute(arguments, at: directory)
         guard output.status == .exited(code: 0) else {
@@ -63,7 +64,7 @@ extension Git.Client {
 
     internal func result(
         _ arguments: [Swift.String],
-        at directory: Swift.String? = nil
+        at directory: Path::Path? = nil
     ) throws(Error) -> (termination: Termination, stdout: [UInt8], stderr: [UInt8]) {
         let output = try execute(arguments, at: directory)
         return (
@@ -75,7 +76,7 @@ extension Git.Client {
 
     internal func text(
         _ arguments: [Swift.String],
-        at directory: Swift.String? = nil
+        at directory: Path::Path? = nil
     ) throws(Error) -> Swift.String {
         let bytes = try bytes(arguments, at: directory)
         var start = bytes.startIndex
