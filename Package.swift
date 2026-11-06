@@ -32,7 +32,7 @@ let package = Package(
         .testTarget(
             name: "Git Tests",
             dependencies: [
-                "Git Foundation",
+                .target(name: "Git Foundation"),
                 .product(name: "Path", package: "swift-path"),
             ]
         ),
