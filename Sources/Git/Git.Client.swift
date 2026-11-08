@@ -1,5 +1,5 @@
 public import Git_Standard
-internal import Path
+public import Path
 private import Process
 
 extension Git {
