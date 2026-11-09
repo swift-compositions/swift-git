@@ -63,6 +63,22 @@ extension `Git.Client Tests` {
         }
 
         @Test
+        func `probing a ref the remote lacks throws missing`() throws {
+            let root = try GitFixture.makeRoot()
+            let source = try GitFixture.path(root, "source.git")
+
+            defer { GitFixture.remove(root) }
+
+            let client = Git.Client()
+            try client.initialize(at: source, bare: true)
+
+            let ref = try Git.Ref.Name("refs/heads/main")
+            #expect(throws: Git.Client.Error.missing(ref)) {
+                try client.probe(source.string, ref: ref)
+            }
+        }
+
+        @Test
         func `isolated clone proves ancestry and exact object fetch`() throws {
             let root = try GitFixture.makeRoot()
             let source = try GitFixture.path(root, "source")

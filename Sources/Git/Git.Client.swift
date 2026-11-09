@@ -319,7 +319,24 @@ extension Git.Client {
         _ remote: Swift.String,
         ref: Git.Ref.Name
     ) throws(Error) -> Git.Ref.Advertisement {
-        let output = try bytes(["ls-remote", "--refs", "--exit-code", remote, ref.rawValue])
+        let arguments = ["ls-remote", "--refs", "--exit-code", remote, ref.rawValue]
+        let result = try result(arguments)
+        switch result.termination {
+        case .exited(code: 0):
+            break
+
+        case .exited(code: 2):
+            throw .missing(ref)
+
+        default:
+            throw .command(
+                arguments: arguments,
+                termination: result.termination,
+                stdout: result.stdout,
+                stderr: result.stderr
+            )
+        }
+        let output = result.stdout
         let records: [Git.Ref.Advertisement]
         do throws(Git.Ref.Advertisement.Error) {
             records = try Git.Ref.Advertisement.parse(output)
